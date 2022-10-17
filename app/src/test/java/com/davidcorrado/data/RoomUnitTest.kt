@@ -29,22 +29,24 @@ class RoomUnitTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun queryRoom() = runTest {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val db = Room.inMemoryDatabaseBuilder(
-            context,
-            AppDatabase::class.java
-        ).build()
-        val dao = db.loginSessionDao()
-        val scope = CoroutineScope(UnconfinedTestDispatcher())
-        val sessionFlow = dao.getSession().stateIn(
-            scope,
-            SharingStarted.Eagerly,
-            null
-        )
-        val loginSession = getLoginSession()
-        dao.save(loginSession)
-        val session = sessionFlow.first() // { it != null }
-        assertTrue(session == loginSession)
+        repeat(50) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val db = Room.inMemoryDatabaseBuilder(
+                context,
+                AppDatabase::class.java
+            ).build()
+            val dao = db.loginSessionDao()
+            val scope = CoroutineScope(UnconfinedTestDispatcher())
+            val sessionFlow = dao.getSession().stateIn(
+                scope,
+                SharingStarted.Eagerly,
+                null
+            )
+            val loginSession = getLoginSession()
+            dao.save(loginSession)
+            val session = sessionFlow.first()// { it != null }
+            assertTrue(session == loginSession)
+        }
     }
     private fun getLoginSession(): LoginSession {
         return LoginSession(
