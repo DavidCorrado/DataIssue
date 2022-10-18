@@ -9,8 +9,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.*
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -28,7 +27,7 @@ import org.robolectric.annotation.Config
 class RoomUnitTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun queryRoom() = runTest {
+    fun queryRoom() = runTest{
         repeat(50) {
             val context = ApplicationProvider.getApplicationContext<Context>()
             val db = Room.inMemoryDatabaseBuilder(
@@ -36,15 +35,15 @@ class RoomUnitTest {
                 AppDatabase::class.java
             ).build()
             val dao = db.loginSessionDao()
-            val scope = CoroutineScope(UnconfinedTestDispatcher())
+            val scope = TestScope(UnconfinedTestDispatcher())
+            val loginSession = getLoginSession()
+            dao.save(loginSession)
             val sessionFlow = dao.getSession().stateIn(
                 scope,
                 SharingStarted.Eagerly,
-                null
+                dao.getSession().first()
             )
-            val loginSession = getLoginSession()
-            dao.save(loginSession)
-            val session = sessionFlow.first()// { it != null }
+            val session = sessionFlow.first()
             assertTrue(session == loginSession)
         }
     }
