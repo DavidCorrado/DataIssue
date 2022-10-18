@@ -40,12 +40,12 @@ class RoomUnitTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun stateFlowWithStateFlow() = runTest(UnconfinedTestDispatcher()){
+    fun stateFlowWithStateFlow() = runTest{
         repeat(50) {
             val loginSession2 = getLoginSession2()
             val mutableFlow = MutableStateFlow<LoginSession?>(loginSession2)
             assertTrue(mutableFlow.first() == loginSession2)
-            val scope = TestScope(UnconfinedTestDispatcher())//Not sure why we need this
+            val scope = TestScope(UnconfinedTestDispatcher())
             val sessionFlow = mutableFlow.stateIn(
                 scope,
                 SharingStarted.Eagerly,
