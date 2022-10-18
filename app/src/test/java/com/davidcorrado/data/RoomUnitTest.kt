@@ -27,7 +27,24 @@ import org.robolectric.annotation.Config
 class RoomUnitTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun queryRoom() = runTest{
+    fun queryRoom() = runTest {
+        repeat(50) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val db = Room.inMemoryDatabaseBuilder(
+                context,
+                AppDatabase::class.java
+            ).build()
+            val dao = db.loginSessionDao()
+            val loginSession = getLoginSession()
+            dao.save(loginSession)
+            val session = dao.getSession().first()
+            assertTrue(session == loginSession)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun queryStateFlow() = runTest{
         repeat(50) {
             val context = ApplicationProvider.getApplicationContext<Context>()
             val db = Room.inMemoryDatabaseBuilder(
@@ -36,13 +53,13 @@ class RoomUnitTest {
             ).build()
             val dao = db.loginSessionDao()
             val scope = TestScope(UnconfinedTestDispatcher())
-            val loginSession = getLoginSession()
-            dao.save(loginSession)
             val sessionFlow = dao.getSession().stateIn(
                 scope,
                 SharingStarted.Eagerly,
-                dao.getSession().first()
+                null
             )
+            val loginSession = getLoginSession()
+            dao.save(loginSession)
             val session = sessionFlow.first()
             assertTrue(session == loginSession)
         }
@@ -50,6 +67,11 @@ class RoomUnitTest {
     private fun getLoginSession(): LoginSession {
         return LoginSession(
             userId = "669",
+        )
+    }
+    private fun getLoginSession2(): LoginSession {
+        return LoginSession(
+            userId = "668",
         )
     }
 }
