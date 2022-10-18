@@ -4,11 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
 import org.junit.Test
 
@@ -37,14 +34,53 @@ class RoomUnitTest {
             val dao = db.loginSessionDao()
             val loginSession = getLoginSession()
             dao.save(loginSession)
-            val session = dao.getSession().first()
-            assertTrue(session == loginSession)
+            assertTrue(dao.getSession().first() == loginSession)
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun queryStateFlow() = runTest{
+    fun stateFlowWithStateFlow() = runTest(UnconfinedTestDispatcher()){
+        repeat(50) {
+            val loginSession2 = getLoginSession2()
+            val mutableFlow = MutableStateFlow<LoginSession?>(loginSession2)
+            assertTrue(mutableFlow.first() == loginSession2)
+            val scope = TestScope(UnconfinedTestDispatcher())//Not sure why we need this
+            val sessionFlow = mutableFlow.stateIn(
+                scope,
+                SharingStarted.Eagerly,
+                null//Not used
+            )
+            assertTrue(sessionFlow.first() == loginSession2)
+            val loginSession = getLoginSession()
+            mutableFlow.emit(loginSession)
+            assertTrue(sessionFlow.first() == loginSession)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun flowWithStateFlow() = runTest{
+        repeat(50) {
+            val loginSession2 = getLoginSession2()
+
+            val flow = flow<LoginSession?> {
+                emit(loginSession2)
+            }
+            assertTrue(flow.first() == loginSession2)
+            val scope = TestScope(UnconfinedTestDispatcher())
+            val sessionFlow = flow.stateIn(
+                scope,
+                SharingStarted.Eagerly,
+                null
+            )
+            assertTrue(sessionFlow.first() == loginSession2)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun queryRoomEmptyStateFlow() = runTest{
         repeat(50) {
             val context = ApplicationProvider.getApplicationContext<Context>()
             val db = Room.inMemoryDatabaseBuilder(
@@ -58,12 +94,36 @@ class RoomUnitTest {
                 SharingStarted.Eagerly,
                 null
             )
+            assertTrue(sessionFlow.first() == null)
+
             val loginSession = getLoginSession()
             dao.save(loginSession)
-            val session = sessionFlow.first()
-            assertTrue(session == loginSession)
+            assertTrue(sessionFlow.first() == loginSession)
         }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun queryRoomRestoreStateFlow() = runTest{
+        repeat(50) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val db = Room.inMemoryDatabaseBuilder(
+                context,
+                AppDatabase::class.java
+            ).build()
+            val dao = db.loginSessionDao()
+            val scope = TestScope(UnconfinedTestDispatcher())
+            val loginSession = getLoginSession()
+            dao.save(loginSession)
+            val sessionFlow = dao.getSession().stateIn(
+                scope,
+                SharingStarted.Eagerly,
+                null
+            )
+            assertTrue(sessionFlow.first() == loginSession)
+        }
+    }
+
     private fun getLoginSession(): LoginSession {
         return LoginSession(
             userId = "669",
